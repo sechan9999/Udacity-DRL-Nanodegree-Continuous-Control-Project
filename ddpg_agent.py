@@ -1,5 +1,4 @@
 import random
-import time
 from collections import namedtuple, deque
 import numpy as np
 
@@ -142,8 +141,6 @@ class Agent():
         # Initialize time step (for updating every UPDATE_EVERY steps)
         self.u_step = 0
 
-        self.learn_times = []
-
     def step(self, states, actions, rewards, next_states, dones):
         # Save experience in replay memory
         for i_agent, (state, action, reward, next_state, done) in enumerate(zip(states, actions, rewards, next_states, dones)):
@@ -191,7 +188,6 @@ class Agent():
         =======
             new_priorities (List[float]): list of new priority values for the given sample
         """
-        t0 = time.time()
         states, actions, rewards, next_states, dones = experiences
 
         ### --------------- Critic Update --------------- ###
@@ -262,7 +258,6 @@ class Agent():
         self.soft_update(self.actor_local, self.actor_target, self.tau)
         self.soft_update(self.critic_local, self.critic_target, self.tau)
 
-        self.learn_times.append(time.time() - t0)
         ### Return updated priorities
         return new_priorities
 
