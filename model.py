@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from default_hyperparameters import SEED, N_ATOMS, INIT_SIGMA, LINEAR, FACTORIZED, DUELING, DISTRIBUTIONAL
+from default_hyperparameters import SEED, N_ATOMS, INIT_SIGMA, LINEAR, FACTORIZED, DISTRIBUTIONAL
 
 class NoisyLinear(nn.Module):
     def __init__(self, in_features, out_features, bias=True, initial_sigma=INIT_SIGMA, factorized=FACTORIZED):
@@ -126,78 +126,38 @@ class Actor(nn.Module):
 class Critic(nn.Module):
     """Critic Model."""
 
-    def __init__(self, state_size, action_size, n_atoms=N_ATOMS, dueling=DUELING, distributional=DISTRIBUTIONAL):
+    def __init__(self, state_size, action_size, n_atoms=N_ATOMS, distributional=DISTRIBUTIONAL):
         """Initialize parameters and build model.
         Params
         ======
             state_size (int): Dimension of each state
             action_size (int): Dimension of each action
             n_atoms (int): number of support atoms
-            dueling (bool): whether to use a dueling architecture
             distributional (bool): whether to use distributional learning
         """
         super(Critic, self).__init__()
         self.state_size = state_size
         self.action_size = action_size
         self.n_atoms = n_atoms
-        self.dueling = bool(dueling)
         self.distributional = bool(distributional)
 
-        if dueling:
-            self.fcs0 = nn.Linear(state_size, 256)
-            self.fc1v = nn.Linear(256, 128)
-            self.fc1a = nn.Linear(256 + action_size, 128)
-            self.fc2v = nn.Linear(128, 128)
-            self.fc2a = nn.Linear(128, 128)
-            self.fc3v = nn.Linear(128, n_atoms if distributional else 1)
-            self.fc3a = nn.Linear(128, n_atoms if distributional else 1)
-
-        else:
-            self.fcs0 = nn.Linear(state_size, 256)
-            self.fc1  = nn.Linear(256 + action_size, 128)
-            self.fc2  = nn.Linear(128, 128)
-            self.fc3  = nn.Linear(128, n_atoms if distributional else 1)
+        self.fcs0 = nn.Linear(state_size, 256)
+        self.fc1  = nn.Linear(256 + action_size, 128)
+        self.fc2  = nn.Linear(128, 128)
+        self.fc3  = nn.Linear(128, n_atoms if distributional else 1)
 
         self.hidden_activation = nn.LeakyReLU(0.01)
 
     def reset_parameters(self):
-        if self.dueling:
-            nn.init.kaiming_normal_(self.fcs0.weight.data, a=0.01, mode='fan_in')
-            nn.init.kaiming_normal_(self.fc1v.weight.data, a=0.01, mode='fan_in')
-            nn.init.kaiming_normal_(self.fc1a.weight.data, a=0.01, mode='fan_in')
-            nn.init.kaiming_normal_(self.fc2v.weight.data, a=0.01, mode='fan_in')
-            nn.init.kaiming_normal_(self.fc2a.weight.data, a=0.01, mode='fan_in')
-            nn.init.uniform_(self.fc3v.weight.data, -3e-3, 3e-3)
-            nn.init.uniform_(self.fc3a.weight.data, -3e-3, 3e-3)
-        else:
-            nn.init.kaiming_normal_(self.fcs0.weight.data, a=0.01, mode='fan_in')
-            nn.init.kaiming_normal_(self.fc1.weight.data, a=0.01, mode='fan_in')
-            nn.init.kaiming_normal_(self.fc2.weight.data, a=0.01, mode='fan_in')
-            nn.init.uniform_(self.fc3.weight.data, -3e-3, 3e-3)
+        nn.init.kaiming_normal_(self.fcs0.weight.data, a=0.01, mode='fan_in')
+        nn.init.kaiming_normal_(self.fc1.weight.data, a=0.01, mode='fan_in')
+        nn.init.kaiming_normal_(self.fc2.weight.data, a=0.01, mode='fan_in')
+        nn.init.uniform_(self.fc3.weight.data, -3e-3, 3e-3)
 
     def forward(self, state, action):
-        if self.dueling:
-            xs = self.hidden_activation(self.fcs0(state))
-            x  = torch.cat((xs, action), dim=-1)
-
-            v  = self.hidden_activation(self.fc1v(xs))
-            a  = self.hidden_activation(self.fc1a(x))
-
-            v = self.hidden_activation(self.fc2v(v))
-            a = self.hidden_activation(self.fc2a(a))
-
-            v = self.fc3v(v)
-            a = self.fc3a(a)
-
-            if self.distributional:
-                q = v.add(a.sub(a.mean(dim=-1, keepdim=True)))
-            else:
-                q = v.add(a)
-
-        else:
-            xs = self.hidden_activation(self.fcs0(state))
-            x  = self.hidden_activation(self.fc1(torch.cat((xs, action), dim=-1)))
-            x  = self.hidden_activation(self.fc2(x))
-            q  = self.fc3(x)
+        xs = self.hidden_activation(self.fcs0(state))
+        x  = self.hidden_activation(self.fc1(torch.cat((xs, action), dim=-1)))
+        x  = self.hidden_activation(self.fc2(x))
+        q  = self.fc3(x)
 
         return q

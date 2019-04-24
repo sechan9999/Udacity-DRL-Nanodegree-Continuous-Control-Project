@@ -24,7 +24,6 @@ N_ATOMS = 51            # number of atoms used in distributional network
 INIT_SIGMA = 0.017      # initial noise parameter values
 LINEAR = 'noisy'        # type of linear layer ('linear', 'noisy')
 FACTORIZED = False      # whether to use factorized gaussian noise
-DUELING = True          # whether to use a dueling architecture
 DISTRIBUTIONAL = True   # whether to use distributional learning
 
 
@@ -50,5 +49,4 @@ assert isinstance(N_ATOMS, int) and N_ATOMS > 0, "invalid default N_ATOMS"
 assert isinstance(INIT_SIGMA, (int, float)), "invalid default INIT_SIGMA"
 assert isinstance(LINEAR, str) and LINEAR.lower() in ('linear', 'noisy'), "invalid default LINEAR"
 assert isinstance(FACTORIZED, bool), "invalid default FACTORIZED"
-assert isinstance(DUELING, bool), "invalid default DUELING"
 assert isinstance(DISTRIBUTIONAL, bool), "invalid default DISTRIBUTIONAL"

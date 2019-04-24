@@ -13,7 +13,7 @@ from replay_buffer import ReplayBuffer
 from default_hyperparameters import SEED, BUFFER_SIZE, BATCH_SIZE, START_SINCE,\
                                     GAMMA, TAU, ACTOR_LR, CRITIC_LR, WEIGHT_DECAY, UPDATE_EVERY, N_UPDATES,\
                                     A, INIT_BETA, P_EPS, N_STEPS, SEP_EXP, V_MIN, V_MAX,\
-                                    CLIP, N_ATOMS, INIT_SIGMA, LINEAR, FACTORIZED, DUELING, DISTRIBUTIONAL
+                                    CLIP, N_ATOMS, INIT_SIGMA, LINEAR, FACTORIZED, DISTRIBUTIONAL
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -25,7 +25,7 @@ class Agent():
                  tau=TAU, actor_lr=ACTOR_LR, critic_lr=CRITIC_LR, weight_decay=WEIGHT_DECAY, update_every=UPDATE_EVERY, n_updates=N_UPDATES,
                  priority_eps=P_EPS, a=A, initial_beta=INIT_BETA, n_multisteps=N_STEPS, separate_experiences=SEP_EXP,
                  v_min=V_MIN, v_max=V_MAX, clip=CLIP, n_atoms=N_ATOMS,
-                 initial_sigma=INIT_SIGMA, linear_type=LINEAR, factorized=FACTORIZED, dueling=DUELING, distributional=DISTRIBUTIONAL, **kwds):
+                 initial_sigma=INIT_SIGMA, linear_type=LINEAR, factorized=FACTORIZED, distributional=DISTRIBUTIONAL, **kwds):
         """Initialize an Agent object.
 
         Params
@@ -56,7 +56,6 @@ class Agent():
             initial_sigma (float): initial noise parameter weights
             linear_type (str): one of ('linear', 'noisy'); type of linear layer to use
             factorized (bool): whether to use factorized gaussian noise in noisy layers
-            dueling (bool): whether to use a dueling architecture
             distributional (bool): whether to use distributional learning
         """
         if kwds != {}:
@@ -87,7 +86,6 @@ class Agent():
         assert isinstance(initial_sigma, (int, float)) and initial_sigma >= 0
         assert isinstance(linear_type, str) and linear_type.strip().lower() in ('linear', 'noisy')
         assert isinstance(factorized, bool)
-        assert isinstance(dueling, bool)
         assert isinstance(distributional, bool)
 
         random.seed(seed)
@@ -121,7 +119,6 @@ class Agent():
         self.initial_sigma        = initial_sigma
         self.linear_type          = linear_type.strip().lower()
         self.factorized           = bool(factorized)
-        self.dueling              = bool(dueling)
         self.distributional       = bool(distributional)
 
         # Distribution
@@ -135,8 +132,8 @@ class Agent():
         self.actor_optimizer = optim.Adam(self.actor_local.parameters(), lr=actor_lr)
 
         # Critic Networks & Optimizer
-        self.critic_local  = Critic(state_size, action_size, n_atoms, dueling, distributional).to(device)
-        self.critic_target = Critic(state_size, action_size, n_atoms, dueling, distributional).to(device)
+        self.critic_local  = Critic(state_size, action_size, n_atoms, distributional).to(device)
+        self.critic_target = Critic(state_size, action_size, n_atoms, distributional).to(device)
         self.critic_target.load_state_dict(self.critic_local.state_dict())
         self.critic_optimizer = optim.Adam(self.critic_local.parameters(), lr=critic_lr, weight_decay=weight_decay)
 
@@ -202,6 +199,7 @@ class Agent():
         if self.distributional:
             with torch.no_grad():
                 next_actions    = self.actor_target(next_states)
+
                 Q_targets_probs = F.softmax(self.critic_target(next_states, next_actions), dim=-1)
 
                 tz_projected    = torch.clamp(rewards + (1 - dones) * gamma * self.supports, min=self.v_min, max=self.v_max)
