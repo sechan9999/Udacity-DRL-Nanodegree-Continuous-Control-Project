@@ -93,7 +93,7 @@ class ReplayBuffer:
         indices_not_prepared = True
         while indices_not_prepared:
             sample_values = np.linspace(0, self.tree[1], num=self.batch_size, endpoint=False, dtype=np.float32)
-            sample_values += np.multiply(np.random.rand(self.batch_size), np.subtract(sample_values[1], sample_values[0]))
+            sample_values += np.multiply(np.random.rand(self.batch_size), sample_values[1])
             tree_indices = np.ones(self.batch_size, dtype=np.int32)
             try:
                 for _ in range(self._non_leaf_depth):
