@@ -29,8 +29,6 @@ class ReplayBuffer:
         self.a = a
         self.separate_experiences = bool(separate_experiences)
 
-        self._at_least_once_updated = False
-
         self.memory_write_idx = 0
         self._non_leaf_depth = math.ceil(math.log2(buffer_size))
         self._memory_start_idx = 2 ** self._non_leaf_depth
@@ -137,32 +135,6 @@ class ReplayBuffer:
         # Remove Duplicate Samples (discard except the first occurence in the array)
         indices, idx_indices = np.unique(indices, return_index=True)
         new_priorities_a = np.power(new_priorities[idx_indices], self.a)
-
-        if not self._at_least_once_updated:
-            self._at_least_once_updated = True
-            max_a = np.max(new_priorities_a)
-
-            if self._buffer_is_full:
-                self.priorities_a[:] = max_a
-                idx_start = self._memory_start_idx
-                idx_end = len(self.tree)
-
-            else:
-                self.priorities_a[:self.memory_write_idx] = max_a
-                idx_start = self._memory_start_idx
-                idx_end = self._memory_start_idx+self.memory_write_idx
-
-            self.tree[:idx_start] = 0.
-            self.tree[idx_start:idx_end] = max_a
-
-            for _ in range(self._non_leaf_depth - 1):
-                child_indices = np.arange(idx_start, idx_end)
-                parent_indices = np.floor_divide(child_indices, 2)
-                np.add.at(self.tree, parent_indices, self.tree[child_indices])
-                idx_start //= 2
-                idx_end = ((idx_end - 1) // 2) + 1
-
-            self.tree[[0, 1]] = np.add(self.tree[2], self.tree[3])
 
         delta_priority_a = np.subtract(new_priorities_a, self.priorities_a[indices])
         tree_indices = np.add(indices, self._memory_start_idx)
