@@ -218,8 +218,8 @@ class Agent():
             Q_predicted_dists = self.critic_local(states, actions)
 
             # critic_loss_per_instance = Q_target_dists.mul(Q_predicted_dists.exp().sum(dim=-1, keepdim=True).log() - Q_predicted_dists).sum(dim=-1, keepdim=False) # Cross-Entropy
-            critic_loss_per_instance = Q_target_dists.mul(Q_predicted_dists.exp().sum(dim=-1, keepdim=True).log() - Q_predicted_dists + Q_target_dists.add(Q_target_dists.eq(0).type(Q_target_dists.dtype)).log()).sum(dim=-1, keepdim=False) # KL-Divergence
-            # critic_loss_per_instance = F.kl_div(F.log_softmax(Q_predicted_dists, dim=-1), Q_target_dists, reduce=False).sum(dim=-1, keepdim=False) # KL-Divergence
+            # critic_loss_per_instance = Q_target_dists.mul(Q_predicted_dists.exp().sum(dim=-1, keepdim=True).log() - Q_predicted_dists + Q_target_dists.add(Q_target_dists.eq(0).type(Q_target_dists.dtype)).log()).sum(dim=-1, keepdim=False) # KL-Divergence
+            critic_loss_per_instance = F.kl_div(F.log_softmax(Q_predicted_dists, dim=-1), Q_target_dists, reduce=False).sum(dim=-1, keepdim=False) # KL-Divergence
         ## Single Q Value ##
         else:
             with torch.no_grad():
