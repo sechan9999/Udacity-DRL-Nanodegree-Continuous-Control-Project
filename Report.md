@@ -148,7 +148,7 @@ I've trained four `Agent` instances with seeds `1-4` and found that they could a
 
 ![training plot](images/train_plot.png)
 
-But, of course, the condition for solving the environment is getting an average score over `+30` for all agents for **100** episodes, and 30 episodes of training does not meet the criterion.
+But, of course, the condition for solving the environment is getting an average score of at least `+30` for all agents over **100** episodes, and 30 episodes of training does not meet the criterion.
 
 Therefore, I evaluated the trained agent by running for additional 100 episodes without further training to ensure that my agent can, indeed, solve the environment.
 
