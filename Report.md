@@ -4,7 +4,7 @@ This report is made as a part of this project.
 
 ## Agent Algorithm
 
-The algorithms for the agent implemented in `ddqn_agent.py` and `model.py` are [Deep Deterministic Policy Gradient](https://arxiv.org/abs/1509.02971) and [Distributional Deep Deterministic Policy Gradient](https://arxiv.org/abs/1804.08617).
+The algorithms for the agent implemented in `ddqn_agent.py`, `model.py`, and `replay_buffer.py` are [Deep Deterministic Policy Gradient](https://arxiv.org/abs/1509.02971) and [Distributional Deep Deterministic Policy Gradient](https://arxiv.org/abs/1804.08617).
 
 Both implementation incorporate [Prioritized Experienced Replay](https://arxiv.org/abs/1511.05952), [Multi-step Bootstrap Targets](https://arxiv.org/abs/1602.01783), and [Noisy Networks](https://arxiv.org/abs/1706.10295). Each component comes with its own set of hyperparameters and setting certain parameters to certain values can disable the effects of the components.
 
@@ -12,13 +12,13 @@ Most part of the implementation is from [my Rainbow implementation used in the p
 
 The critic model contains both scalar and distributional network architectures, and you can choose which architecture to use via one of the hyperparameters, `distributional`.
 
-There are two types of noise available: parameter space noise through noisy linear layers, and gaussian noise on the action space. The standard deviation of the gaussian noise is controlled by `eps` training parameters. Ornstein-Uhlenbeck noise is a popular and effective noise for continuous control tasks like this, but I have only implemented gaussian noise as I followed the methods used in [Distributional Deep Deterministic Policy Gradient](https://arxiv.org/abs/1804.08617).
+There are two types of noise available: parameter space noise through noisy linear layers, and gaussian noise on the action space. The standard deviation of the gaussian noise is controlled by `eps` training parameters. Ornstein-Uhlenbeck noise is a popular and effective noise for continuous control tasks like this, but I have only implemented gaussian noise as I was following the methods used in [Distributional Deep Deterministic Policy Gradient](https://arxiv.org/abs/1804.08617).
 
-For [my previous project](https://github.com/wytyang00/Udacity-DRL-Nanodegree-Navigation-Project), I wasn't especially interested in implementing the "Sum Tree" algorithm for efficient sampling as described in [Prioritized Experienced Replay](https://arxiv.org/abs/1511.05952) since I was too caught up in making the whole algorithm working. However, this time, the time cost for training was a huge issue because training an agent would take days of training, which made it hard for me to fiddle with hyperparameters. So, I have implemented the "Sum Tree" algorithm using NumPy arrays and vectorized operations, and incorporated it in the `ReplayBuffer`. This kept the sampling and updating costs low and constant, significantly boosting the training speed.
+For [my previous project](https://github.com/wytyang00/Udacity-DRL-Nanodegree-Navigation-Project), I wasn't especially interested in implementing the "Sum Tree" algorithm for efficient sampling as described in [Prioritized Experienced Replay](https://arxiv.org/abs/1511.05952) since I was too caught up in making the whole algorithm working. However, this time, the time cost for training was a huge issue, taking several days for training an agent, which made it hard for me to fiddle with the hyperparameters. So, I have implemented the "Sum Tree" algorithm using NumPy arrays and vectorized operations, and incorporated it in the `ReplayBuffer`. This kept the sampling and updating costs low and constant, significantly boosting the training speed.
 
 ## Hyperparameters
 
-Most of the hyperparameters are similar to the ones I had in the [previous project](https://github.com/wytyang00/Udacity-DRL-Nanodegree-Navigation-Project), but a few hyperparameters have slightly different effects and there are also some additional hyperparameters added. I ran several training sessions with different hyperparameter settings and settled with these values using **20-Agents version**:
+Most of the avalilable hyperparameters are similar to the ones I had in the [previous project](https://github.com/wytyang00/Udacity-DRL-Nanodegree-Navigation-Project), but a few hyperparameters, such as `eps`, have slightly different effects and there are also some additional hyperparameters added. I ran several training sessions with different hyperparameter settings and settled with these values using **20-Agents version**:
 
 ```python
 hyperparams = {
@@ -150,13 +150,13 @@ I've trained four `Agent` instances with seeds `1-4` and found that they could a
 
 But, of course, the condition for solving the environment is getting an average score of at least `+30` for all agents over **100** episodes, and 30 episodes of training does not meet the criterion.
 
-Therefore, I evaluated the trained agent by running for additional 100 episodes without further training to ensure that my agent can, indeed, solve the environment.
+Therefore, I evaluated the trained agents by running for additional 100 episodes without further training to ensure that my agents can, indeed, solve the environment.
 
 ![evaluation plot](images/eval_plot.png)
 
 This plot proves that these agents did achieve the required performance to solve the environment.
 
-The weights for the best model—seed `4`—was saved in `pretrained.pth`.
+The weights for the best agent—seed `4`—was saved in `pretrained.pth`.
 
 _As a side note:_ again, interestingly, agents performed better with their noises, albeit just by a little bit. This trend appeared on the last project, Navigation, and I think these agents are utilizing the stochasticity added by the noise to counter the uncertainty of their states. However, this is still just my speculation and, thus, this would need further investigation to be verified and understood.
 
