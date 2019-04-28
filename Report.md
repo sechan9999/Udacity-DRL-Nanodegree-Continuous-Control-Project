@@ -8,9 +8,22 @@ The algorithms for the agent implemented in `ddqn_agent.py`, `model.py`, and `re
 
 Both implementation incorporate [Prioritized Experienced Replay](https://arxiv.org/abs/1511.05952), [Multi-step Bootstrap Targets](https://arxiv.org/abs/1602.01783), and [Noisy Networks](https://arxiv.org/abs/1706.10295). Each component comes with its own set of hyperparameters and setting certain parameters to certain values can disable the effects of the components.
 
+The overall algorithm works like this:<br/>
+1. The agent receives the current state.
+2. The actor network takes in the state and outputs an action.
+3. The agent takes the action and receives an reward, the next state, and a boolean value indicating whether the agent reached the terminal state.
+4. The experience tuple `(state, action, reward, next state, terminal reached)` is passed to the replay buffer and stored in a temporal buffer.
+5. If enough consecutive experience tuples are gathered in the temporal buffer, this buffer is copied and added to the main replay buffer with a maximum priority value.
+6. Every `k` time steps, specified as a hyperparameter, randomly sample a batch of experiences with probabilities based on their priorities, take a learning step, and update the priorities according to the losses calculated during the learning step.
+7. Repeat these steps until the training is finished.
+
+During the learning step, the target actor and critic networks, separate from online networks, are used to calculate the expected target Q-value or the distribution of target Q-value. This target value or distribution is then used to update the online critic network to bring its estimates closer to the target value or distribution (using TD-error for scalar Q-values or Kullback-Leibler divergence for distributions). The losses calculated during this update is also used as updated priorities for each corresponding experience. After updating the online critic network, the online actor network is updated so that the actor network outputs actions with higher expected Q-value according to the updated online critic network.
+
+`ReplayBuffer` contains a single main memory buffer and one additional temporal buffer per agent for n-step bootstrap learning. Before the memories are fed into the main buffer, they are first stored in the corresponding temporal buffers, which are deque objects with `n_multisteps` length limits. Each temporal buffer is iterated and fed into the main memory when they are full, and they are emptied whenever the corresponding agent finishes the current episode.
+
 Most part of the implementation is from [my Rainbow implementation used in the previous project](https://github.com/wytyang00/Udacity-DRL-Nanodegree-Navigation-Project). The overall structures for the `ReplayBuffer` and `Agent` are very similar, and the `NoisyLinear` is used as it is.
 
-The critic model contains both scalar and distributional network architectures, and you can choose which architecture to use via one of the hyperparameters, `distributional`.
+The critic model contains both scalar and distributional network architectures, and which architecture to be used is determined via the hyperparameters `distributional`.
 
 There are two types of noise available: parameter space noise through noisy linear layers, and gaussian noise on the action space. The standard deviation of the gaussian noise is controlled by `eps` training parameters. Ornstein-Uhlenbeck noise is a popular and effective noise for continuous control tasks like this, but I have only implemented gaussian noise as I was following the methods used in [Distributional Deep Deterministic Policy Gradient](https://arxiv.org/abs/1804.08617).
 
@@ -23,7 +36,7 @@ Most of the avalilable hyperparameters are similar to the ones I had in the [pre
 ```python
 hyperparams = {
     # Reproducibility
-    'seed'                : 4,        # random seed for reproducible results
+    'seed'                : 0,        # random seed for reproducible results
 
     # Agent basic parameters
     'batch_size'          : 256,      # batch size for each learning step
@@ -61,7 +74,7 @@ hyperparams = {
 }
 
 train_params = {
-    'n_episodes'           : 30,    # number of total episodes to train
+    'n_episodes'           : 200,   # number of total episodes to train
     'continue_after_solved': False, # whether to keep training after the environment is solved
 
     # Exploration using gaussian noise
@@ -79,19 +92,19 @@ train_params = {
 The architecture of the Actor Network is as follows:
 <table class="unchanged rich-diff-level-one">
   <tr>
-    <td align="center">Input (, [<code>batch_size</code>, <code>state_size</code>])</td>
+    <td align="center"><code>States</code><br/>>>><br/>Input (, [<code>batch_size</code>, <code>state_size</code>])</td>
   </tr>
   <tr>
     <td align="center">NoisyLinear ([<code>batch_size</code>, <code>state_size</code>], [<code>batch_size</code>, 256])</td>
   </tr>
   <tr>
-    <td align="center">LeakyReLU(neg_slope=0.01)</td>
+    <td align="center">ELU(alpha=1.0)</td>
   </tr>
   <tr>
     <td align="center">NoisyLinear ([<code>batch_size</code>, 256], [<code>batch_size</code>, 128])</td>
   </tr>
   <tr>
-    <td align="center">LeakyReLU(neg_slope=0.01)</td>
+    <td align="center">ELU(alpha=1.0)</td>
   </tr>
   <tr>
     <td align="center">NoisyLinear ([<code>batch_size</code>, 128], [<code>batch_size</code>, <code>action_size</code>])</td>
@@ -100,7 +113,7 @@ The architecture of the Actor Network is as follows:
     <td align="center">Tanh()</td>
   </tr>
   <tr>
-    <td align="center">Output (, [<code>batch_size</code>, <code>actions_size</code>])</td>
+    <td align="center">Output (, [<code>batch_size</code>, <code>actions_size</code>])<br/>>>><br/><code>Actions</code></td>
   </tr>
 </table>
 
@@ -108,7 +121,7 @@ The architecture of the Actor Network is as follows:
 And the architecture of the Critic Network is as follows:
 <table class="unchanged rich-diff-level-one">
   <tr>
-    <td align="center" colspan="1">Input (, [<code>batch_size</code>, <code>state_size</code>])</td>
+    <td align="center" colspan="1"><code>States</code><br/>>>><br/>Input (, [<code>batch_size</code>, <code>state_size</code>])</td>
     <td align="center" colspan="1"></td>
   </tr>
   <tr>
@@ -116,8 +129,8 @@ And the architecture of the Critic Network is as follows:
     <td align="center" colspan="1"></td>
   </tr>
   <tr>
-    <td align="center" colspan="1">LeakyReLU(neg_slope=0.01)</td>
-    <td align="center" colspan="1">Input (, [<code>batch_size</code>, <code>action_size</code>])</td>
+    <td align="center" colspan="1">ELU(alpha=1.0)</td>
+    <td align="center" colspan="1"><code>Actions</code><br/>>>><br/>Input (, [<code>batch_size</code>, <code>action_size</code>])</td>
   </tr>
   <tr>
     <td align="center" colspan="2">Concatenate ({[<code>batch_size</code>, 256], [<code>batch_size</code>, <code>action_size</code>]}, [<code>batch_size</code>, 256 + <code>action_size</code>])</td>
@@ -126,39 +139,43 @@ And the architecture of the Critic Network is as follows:
     <td align="center" colspan="2">Linear ([<code>batch_size</code>, 256 + <code>action_size</code>], [<code>batch_size</code>, 128])</td>
   </tr>
   <tr>
-    <td align="center" colspan="2">LeakyReLU(neg_slope=0.01)</td>
+    <td align="center" colspan="2">ELU(alpha=1.0)</td>
   </tr>
   <tr>
     <td align="center" colspan="2">Linear ([<code>batch_size</code>, 128], [<code>batch_size</code>, 128])</td>
   </tr>
   <tr>
-    <td align="center" colspan="2">LeakyReLU(neg_slope=0.01)</td>
+    <td align="center" colspan="2">ELU(alpha=1.0)</td>
   </tr>
   <tr>
     <td align="center" colspan="2">Linear ([<code>batch_size</code>, 128], [<code>batch_size</code>, <code>n_atoms</code> <b>or</b> 1])</td>
   </tr>
   <tr>
-    <td align="center" colspan="2">Output (, [<code>batch_size</code>, <code>n_atoms</code>] <b>or</b> 1)</td>
+    <td align="center" colspan="2">Output (, [<code>batch_size</code>, <code>n_atoms</code>] <b>or</b> 1)<br/>>>><br/><code>Estimate Q-value Expectations</code> <b>or</b> <code>Probability Distributions</code> for the <code>Actions</code> given</td>
   </tr>
 </table>
 
-## Training & Evaluation
+## Training & Evaluation Results
 
-I've trained four `Agent` instances with seeds `1-4` and found that they could achieve a environment-solving performance in **less than 30 episodes with 20 distributed agents:**
+An agent with the hyperparameters described above solved the environment with the minimum number of episodes: **100 episodes**.
 
 ![training plot](images/train_plot.png)
 
-But, of course, the condition for solving the environment is getting an average score of at least `+30` for all agents over **100** episodes, and 30 episodes of training does not meet the criterion.
+In fact, as shown in this plot, the agent already reached a solving-performance around **episode 12**, never scoring lower than `+30` from that point. The weights for the agent's actor and critic networks are saved in `pretrained.pth`.
 
-Therefore, I evaluated the trained agents by running for additional 100 episodes without further training to ensure that my agents can, indeed, solve the environment.
+In order to get a better estimate for the agent's end performance, I ran two evaluation runs, one with noise and one without, each running for 100 episodes:
 
 ![evaluation plot](images/eval_plot.png)
 
-This plot proves that these agents did achieve the required performance to solve the environment.
+Although not obvious, the agent performed slightly better with more stability when the noise was removed. This is interesting since most of other models I had trained before tended to score better with noise.
 
-The weights for the best agent—seed `4`—was saved in `pretrained.pth`.
+Previous to this agent, I had trained four agents with almost identical hyperparameter settings, but with different seeds, ReLU as hidden activations, and only for 30 episodes. I had to discard them for this project after getting a notification that I was expected to train the agents for at least 100 episodes and use the training scores to determine their performances. Here are the training and evaluation plots for those four previous agents:
 
-_As a side note:_ again, interestingly, agents performed better with their noises, albeit just by a little bit. This trend appeared on the last project, Navigation, and I think these agents are utilizing the stochasticity added by the noise to counter the uncertainty of their states. However, this is still just my speculation and, thus, this would need further investigation to be verified and understood.
+![old training plot](images/old_train_plot.png)
+
+![old evaluation plot](images/old_eval_plot.png)
+
+Again, these models performed better with noise, as it appears on the bottom plot. This would be an interesting topic to look into with more details later.
 
 ## Future Ideas
 

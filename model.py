@@ -101,7 +101,7 @@ class Actor(nn.Module):
         self.fc1 = linear(256, 128)
         self.fc2 = linear(128, action_size)
 
-        self.hidden_activation = nn.LeakyReLU(0.01)
+        self.hidden_activation = nn.ELU(alpha=1.)
         self.output_activation = nn.Tanh()
 
     def reset_parameters(self):
@@ -146,7 +146,7 @@ class Critic(nn.Module):
         self.fc2  = nn.Linear(128, 128)
         self.fc3  = nn.Linear(128, n_atoms if distributional else 1)
 
-        self.hidden_activation = nn.LeakyReLU(0.01)
+        self.hidden_activation = nn.ELU(alpha=1.)
 
     def reset_parameters(self):
         nn.init.kaiming_normal_(self.fcs0.weight.data, a=0.01, mode='fan_in')
