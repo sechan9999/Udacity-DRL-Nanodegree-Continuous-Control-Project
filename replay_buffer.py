@@ -155,4 +155,4 @@ class ReplayBuffer:
 
     def __len__(self):
         """Return the current size of internal memory."""
-        return len(self.buffer_size) if self._buffer_is_full else self.memory_write_idx
+        return self.buffer_size if self._buffer_is_full else self.memory_write_idx
