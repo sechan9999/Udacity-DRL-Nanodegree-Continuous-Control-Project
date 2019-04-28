@@ -90,7 +90,7 @@ def ddpg(env, agent, n_episodes, eps_start=0., eps_min=0., eps_decay=0., beta_st
             else:
                 print(report_str + "                                     ", end='')
 
-            if not solved and mean_scores_window_average >= 30:
+            if not solved and len(mean_scores_window) >= 100 and mean_scores_window_average >= 30:
                 print('\nEnvironment solved in {:d} episodes!\tAverage Score: {:.3f}'\
                       .format(i_episode-100, mean_scores_window_average))
                 solved = True
